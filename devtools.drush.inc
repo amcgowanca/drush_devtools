@@ -111,6 +111,22 @@ function drush_devtools_patch($patchfile, $project = NULL) {
         '@project' => $rel_project_dir,
         '@patchfile' => $original_patchfile,
       )), 'ok');
+
+      // If a PATCHES.txt file is to be written, by default this is the case
+      // unless the `no-patch-txt` option is specified - create or append the information
+      // of patches.
+      if (!drush_get_option('no-patch-txt')) {
+        $patches_txt = '- ' . $original_patchfile . "\n";
+        $flags = 0;
+        if (!file_exists($project_dir . '/PATCHES.txt')) {
+          $patches_txt = 'The following patches have been applied to this project:\n' . $patches_txt;
+        }
+        else {
+          $flags = FILE_APPEND;
+        }
+        file_put_contents($project_dir . '/PATCHES.txt', $patches_txt, $flags);
+        drush_log('Generated PATCHES.txt file for path ' . $rel_project_dir, 'ok');
+      }
     }
     else {
       drush_log(dt('Unable to apply patch @patchfile to @project.', array(
