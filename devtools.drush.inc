@@ -178,6 +178,7 @@ function drush_devtools_patch_revert($project = NULL, $patchfile = NULL) {
   }
 
   foreach ($projects as $project_dir) {
+    $rel_project_dir = str_replace(drush_locate_root() . '/', '', $project_dir);
     // If `$patches_txt` boolean flag is TRUE, therefore no patchfile specified
     // attempt to parse the PATCHES.txt file to retrieve patch files that shall be
     // reverted from the project directory.
@@ -189,7 +190,7 @@ function drush_devtools_patch_revert($project = NULL, $patchfile = NULL) {
       foreach ($patchfiles as $patch) {
         // Confirm with the user that he or she wants to revert the current patch on the
         // current project. If no, continue to the next patch; should one exist.
-        if (!drush_confirm(dt('Are you sure you want to revert patch, "@patchfile", on this directory: @project_dir?', array('@project_dir' => $project_dir, '@patchfile' => $patch)))) {
+        if (!drush_confirm(dt('Are you sure you want to revert patch, "@patchfile", on this directory: @project_dir?', array('@project_dir' => $rel_project_dir, '@patchfile' => $patch)))) {
           continue;
         }
 
@@ -198,13 +199,13 @@ function drush_devtools_patch_revert($project = NULL, $patchfile = NULL) {
         if (devtools_patch_revert($patchfile, $project_dir)) {
           drush_log(dt('Successfully reverted patch @patchfile to @project.', array(
             '@patchfile' => $patchfile,
-            '@project' => $project_dir,
+            '@project' => $rel_project_dir,
           )), 'ok');
         }
         else {
           drush_log(dt('Unable to revert patch @patchfile on @project.', array(
             '@patchfile' => $patchfile,
-            '@project' => $project_dir,
+            '@project' => $rel_project_dir,
           )), 'error');
         }
       }
