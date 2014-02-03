@@ -119,7 +119,7 @@ function drush_devtools_patch($patchfile, $project = NULL) {
         $patches_txt = '- ' . $original_patchfile . "\n";
         $flags = 0;
         if (!file_exists($project_dir . '/PATCHES.txt')) {
-          $patches_txt = 'The following patches have been applied to this project:\n' . $patches_txt;
+          $patches_txt = "The following patches have been applied to this project:\n" . $patches_txt;
         }
         else {
           $flags = FILE_APPEND;
