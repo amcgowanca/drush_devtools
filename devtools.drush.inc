@@ -22,7 +22,7 @@ function devtools_drush_command() {
     'description' => 'Applies a single patch file.',
     'arguments' => array(
       'patchfile' => 'The patch file to patch the project with.',
-      'project' => 'The project to patch.',
+      'project' => 'The name of the project to patch.',
     ),
     'required arguments' => 1,
     'options' => array(
@@ -33,6 +33,7 @@ function devtools_drush_command() {
   $commands['devtools-patch-revert'] = array(
     'description' => 'Reverts a one or more patch files for a specified Drupal project.',
     'arguments' => array(
+      'project' => 'The name of the project to revert patch files on.',
       'patchfile' => 'The patch file to revert on a single project.',
     ),
     'aliases' => array('patch-revert', 'rpatch'),
@@ -93,7 +94,7 @@ function drush_devtools_patch($patchfile, $project = NULL) {
   else {
     // If $project is empty; let's assume that the user wants to
     // apply the specified $patchfile to the current working directory.
-    $projects[] = drush_cwd();
+    $projects = array(drush_cwd());
   }
 
   foreach ($projects as $project_dir) {
@@ -143,7 +144,70 @@ function drush_devtools_patch($patchfile, $project = NULL) {
  * If no patchfile is specified and the current working directory of the project
  * in which the patch is to be reverted, we will attempt to find drush make's
  * 'PATCHES.txt' file and revert all patches upon confirmation.
+ *
+ * @param string $project
+ *   The name of the project to revert the patch on.
+ * @param string $patchfile
+ *   The patch file to revert.
  */
-function drush_devtools_patch_revert($patchfile = NULL) {
+function drush_devtools_patch_revert($project = NULL, $patchfile = NULL) {
+  // Attempt to retrieve projects within the filesystem based on the specified
+  // project name. Similarly to drush_devtools_patch, querying {system} table
+  // will only provide the project that is currently active by Drupal.
+  if (!empty($project) && '.' !== $project) {
+    $projects = devtools_find_project_dirs_by_filescan($project);
+    if (empty($projects)) {
+      drush_set_error(dt('No project found with name "@project".', array(
+        '@project' => $project,
+      )));
+    }
+  }
+  else {
+    // If no project is specified, use the current working directory.
+    $projects = array(drush_cwd());
+  }
 
+  $patchfiles = array();
+  $patches_txt = TRUE;
+
+  // If the patchfile is specified, retrieve it and append it as the patch
+  // file to revert on the project directory.
+  if (!empty($patchfile)) {
+    $patchfiles[] = _devtools_patch_get_patchfile($patchfile);
+    $patches_txt = FALSE;
+  }
+
+  foreach ($projects as $project_dir) {
+    // If `$patches_txt` boolean flag is TRUE, therefore no patchfile specified
+    // attempt to parse the PATCHES.txt file to retrieve patch files that shall be
+    // reverted from the project directory.
+    if ($patches_txt && file_exists($project_dir . '/PATCHES.txt')) {
+      $patchfiles = _devtools_patch_parse_patches_text($project_dir . '/PATCHES.txt');
+    }
+
+    if (!empty($patchfiles)) {
+      foreach ($patchfiles as $patch) {
+        // Confirm with the user that he or she wants to revert the current patch on the
+        // current project. If no, continue to the next patch; should one exist.
+        if (!drush_confirm(dt('Are you sure you want to revert patch, "@patchfile", on this directory: @project_dir?', array('@project_dir' => $project_dir, '@patchfile' => $patch)))) {
+          continue;
+        }
+
+        // Retrieve the patch file and attempt to revert it.
+        $patchfile = _devtools_patch_get_patchfile($patch);
+        if (devtools_patch_revert($patchfile, $project_dir)) {
+          drush_log(dt('Successfully reverted patch @patchfile to @project.', array(
+            '@patchfile' => $patchfile,
+            '@project' => $project_dir,
+          )), 'ok');
+        }
+        else {
+          drush_log(dt('Unable to revert patch @patchfile on @project.', array(
+            '@patchfile' => $patchfile,
+            '@project' => $project_dir,
+          )), 'error');
+        }
+      }
+    }
+  }
 }

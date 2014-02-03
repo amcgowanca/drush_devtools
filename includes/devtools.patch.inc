@@ -20,25 +20,30 @@ function devtools_patch_levels() {
  *   The local path to the patch file to apply.
  * @param string $filepath
  *   The file path to the directory to apply the patch.
+ * @param boolean $revert
+ *   A boolean indicating wheth the patch should be reverted or not.
  * @param boolean $log
  *   A boolean indicating whether the shell output should be logged.
  *
  * @return bool
  *   Returns TRUE if successful, otherwise FALSE.
  */
-function devtools_patch($patchfile, $filepath, $log = TRUE) {
+function devtools_patch($patchfile, $filepath, $revert = FALSE, $log = TRUE) {
   $patched = FALSE;
   foreach (devtools_patch_levels() as $level) {
-    $checked = drush_shell_exec('cd %s && GIT_DIR=. git apply --check %s %s --verbose', $filepath, $level, $patchfile);
+    $command = 'cd %s && GIT_DIR=. git apply --check ' . ($revert ? '-R' : '') . ' %s %s --verbose';
+    $checked = drush_shell_exec($command, $filepath, $level, $patchfile);
     if ($checked) {
-      drush_shell_exec('cd %s && GIT_DIR=. git apply %s %s --verbose', $filepath, $level, $patchfile);
+      $command = 'cd %s && GIT_DIR=. git apply ' . ($revert ? '-R' : '') . ' %s %s --verbose';
+      drush_shell_exec($command, $filepath, $level, $patchfile);
       $patched = TRUE;
       break;
     }
   }
 
   foreach (devtools_patch_levels() as $level) {
-    if (drush_shell_exec('patch %s --no-backup-if-mismatch -d %s < %s', $level, $filepath, $patchfile)) {
+    $command = 'patch ' . ($revert ? '-R' : '') . ' %s --no-backup-if-mismatch -d %s < %s';
+    if (drush_shell_exec($command, $level, $filepath, $patchfile)) {
       $patched = TRUE;
       break;
     }
@@ -49,6 +54,15 @@ function devtools_patch($patchfile, $filepath, $log = TRUE) {
   }
 
   return $patched;
+}
+
+/**
+ * A wrapper for devtools_patch with revert flag TRUE.
+ *
+ * @see devtools_patch
+ */
+function devtools_patch_revert($patchfile, $filepath, $log = TRUE) {
+  return devtools_patch($patchfile, $filepath, TRUE, $log);
 }
 
 /**
@@ -72,4 +86,31 @@ function _devtools_patch_get_patchfile($patchfile) {
     }
   }
   return $patchfile;
+}
+
+/**
+ * Reads and parses all patch file URIs from a PATCHES.txt file.
+ *
+ * @param string $patches_txt
+ *   The file path of the PATCHES.txt file.
+ *
+ * @return array
+ *   Returns an array of patch file URIs, FALSE if file does not exist.
+ */
+function _devtools_patch_parse_patches_text($patches_txt) {
+  if (!file_exists($patches_txt)) {
+    return FALSE;
+  }
+
+  $contents = file_get_contents($patches_txt);
+  $contents = explode("\n", $contents);
+
+  $patches = array();
+  foreach ($contents as $line) {
+    if (0 === strpos($line, '- ')) {
+      $line = ltrim($line, '- ');
+      $patches[] = $line;
+    }
+  }
+  return $patches;
 }
