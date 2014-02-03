@@ -10,7 +10,7 @@ include_once 'includes/devtools.patch.inc';
 include_once 'includes/devtools.utilities.inc';
 
 /**
- * Implements hook_drush_command().
+ * Implements hook_drush_command().g
  */
 function devtools_drush_command() {
   $commands = array();
@@ -66,23 +66,23 @@ function drush_devtools_flush() {
 
 /**
  * Patches a single project with the specified patch file.
+ *
+ * @param string $patchfile
+ *   The file path or URL to a valid patch file to use.
+ * @param string $project
+ *   The project to patch. If NULL, current working directory is patched.
  */
 function drush_devtools_patch($patchfile, $project = NULL) {
   $original_patchfile = $patchfile;
-  if (devtools_is_valid_url($patchfile, TRUE)) {
-    $patchfile = devtools_download_file($patchfile);
-  }
-  else {
-    if(!file_exists($patchfile)) {
-      devtools_error('DEVTOOLS_PATCH_FILE_ERROR', dt('Specified patch file "@patchfile" missing.', array(
-        '@patchfile' => $patchfile,
-      )));
-      return;
-    }
-  }
+  $patchfile = _devtools_patch_get_patchfile($patchfile);
 
   if (!empty($project)) {
+    // Attempt to retrieve projects within the filesystem. Note: this is
+    // not the same as querying the Drupal {system} table as this will provide
+    // all instances of a project (e.g. views) instead of only that which Drupal
+    // is currently making use of.
     $projects = devtools_find_project_dirs_by_filescan($project);
+    // If no projects are found, we will just exit and prompt an error.
     if (empty($projects)) {
       drush_set_error(dt('No project found with name "@project".', array(
         '@project' => $project,
@@ -91,21 +91,22 @@ function drush_devtools_patch($patchfile, $project = NULL) {
     }
   }
   else {
+    // If $project is empty; let's assume that the user wants to
+    // apply the specified $patchfile to the current working directory.
     $projects[] = drush_cwd();
   }
 
   foreach ($projects as $project_dir) {
     $rel_project_dir = str_replace(drush_locate_root() . '/', '', $project_dir);
+    // Ask the user whether he or she wants to apply the patch to this directory
+    // prior to continuing. If $project == null, this will prompt for current working
+    // directory instead of a project.
     if (!drush_confirm(dt('Apply patch to this directory: @project_dir?', array('@project_dir' => $rel_project_dir)))) {
       continue;
     }
 
-    $patched = devtools_patch($patchfile, $project_dir);
-    if ($output = drush_shell_exec_output()) {
-      drush_log(implode("\n", $output));
-    }
-
-    if ($patched) {
+    // Attempt to patch the project directory and retrieve the output
+    if (devtools_patch($patchfile, $project_dir)) {
       drush_log(dt('Successfully applied patch @patchfile to @project.', array(
         '@project' => $rel_project_dir,
         '@patchfile' => $original_patchfile,

@@ -3,6 +3,14 @@
  * @file
  */
 
+/**
+ * Returns an array of file paths to valid projects with the name $name.
+ *
+ * @param string $name
+ *   The name of the project.
+ * @return array
+ *   Returns an array of file paths if $name exists; otherwise NULL.
+ */
 function devtools_find_project_dirs_by_filescan($name) {
   static $projects = NULL;
   if (NULL === $projects) {
