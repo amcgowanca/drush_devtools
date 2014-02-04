@@ -9,6 +9,8 @@ include_once 'includes/devtools.filesystem.inc';
 include_once 'includes/devtools.patch.inc';
 include_once 'includes/devtools.utilities.inc';
 
+define('DEVTOOLS_VERSION', '0.1');
+
 /**
  * Implements hook_drush_command().g
  */
@@ -38,6 +40,10 @@ function devtools_drush_command() {
     ),
     'aliases' => array('patch-revert', 'rpatch'),
   );
+  $commands['devtools-version'] = array(
+    'bootstrap' => DRUSH_BOOTSTRAP_DRUSH,
+    'description' => 'Displays the current version of DevTools.',
+  );
   return $commands;
 }
 
@@ -51,6 +57,15 @@ function devtools_drush_help($section) {
     case 'meta:devtools:summary':
       return dt('A collection of common developer oriented tools.');
   }
+}
+
+/**
+ * Displays the current version of DevTools.
+ */
+function drush_devtools_version() {
+  drush_print(dt('Current version of DevTools: @version.', array(
+    '@version' => DEVTOOLS_VERSION,
+  )));
 }
 
 /**
