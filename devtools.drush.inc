@@ -12,7 +12,7 @@ include_once 'includes/devtools.utilities.inc';
 define('DEVTOOLS_VERSION', '0.1');
 
 /**
- * Implements hook_drush_command().g
+ * Implements hook_drush_command().
  */
 function devtools_drush_command() {
   $commands = array();
