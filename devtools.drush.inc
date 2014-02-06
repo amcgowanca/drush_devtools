@@ -92,7 +92,7 @@ function drush_devtools_patch($patchfile, $project = NULL) {
   $original_patchfile = $patchfile;
   $patchfile = _devtools_patch_get_patchfile($patchfile);
 
-  if (!empty($project)) {
+  if (!empty($project) && '.' !== $project) {
     // Attempt to retrieve projects within the filesystem. Note: this is
     // not the same as querying the Drupal {system} table as this will provide
     // all instances of a project (e.g. views) instead of only that which Drupal
@@ -129,18 +129,19 @@ function drush_devtools_patch($patchfile, $project = NULL) {
       )), 'ok');
 
       // If a PATCHES.txt file is to be written, by default this is the case
-      // unless the `no-patch-txt` option is specified - create or append the information
-      // of patches.
+      // unless the `no-patch-txt` option is specified - create the information of patches.
       if (!drush_get_option('no-patch-txt')) {
-        $patches_txt = '- ' . $original_patchfile . "\n";
-        $flags = 0;
-        if (!file_exists($project_dir . '/PATCHES.txt')) {
-          $patches_txt = "The following patches have been applied to this project:\n" . $patches_txt;
+        $patches_txt = "The following patches have been applied to this project:\n\n";
+        $patches_txt .= '- ' . $original_patchfile . "\n";
+        if (file_exists($project_dir . '/PATCHES.txt')) {
+          $existing_patches = _devtools_patch_parse_patches_text($project_dir . '/PATCHES.txt');
+          if (!empty($existing_patches)) {
+            foreach (array_reverse($existing_patches) as $existing_patch) {
+              $patches_txt = '- ' . $existing_patch . "\n" . $patches_txt;
+            }
+          }
         }
-        else {
-          $flags = FILE_APPEND;
-        }
-        file_put_contents($project_dir . '/PATCHES.txt', $patches_txt, $flags);
+        file_put_contents($project_dir . '/PATCHES.txt', $patches_txt);
         drush_log('Generated PATCHES.txt file for path ' . $rel_project_dir, 'ok');
       }
     }
