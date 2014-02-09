@@ -1,6 +1,13 @@
 <?php
 /**
- * @file
+ * This file is part of Drush DevTools.
+ *
+ * (c) Aaron McGowan (www.amcgowan.ca) <me@amcgowan.ca>
+ *
+ * This source file is subject to the GPL version 2 license that is
+ * bundled with this source code in the file LICENSE.md.
+ *
+ * Drupal is a registered trademark of Dries Buytaert (www.buytaert.com).
  */
 
 /**

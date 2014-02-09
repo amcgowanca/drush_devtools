@@ -1,7 +1,13 @@
 <?php
 /**
- * @file
- * Drush DevTools commands.
+ * This file is part of Drush DevTools.
+ *
+ * (c) Aaron McGowan (www.amcgowan.ca) <me@amcgowan.ca>
+ *
+ * This source file is subject to the GPL version 2 license that is
+ * bundled with this source code in the file LICENSE.md.
+ *
+ * Drupal is a registered trademark of Dries Buytaert (www.buytaert.com).
  */
 
 include_once 'includes/devtools.common.inc';
@@ -9,6 +15,9 @@ include_once 'includes/devtools.filesystem.inc';
 include_once 'includes/devtools.patch.inc';
 include_once 'includes/devtools.utilities.inc';
 
+/**
+ * Denotes the current major.minor version.
+ */
 define('DEVTOOLS_VERSION', '0.1');
 
 /**
@@ -16,11 +25,16 @@ define('DEVTOOLS_VERSION', '0.1');
  */
 function devtools_drush_command() {
   $commands = array();
+  $commands['devtools-version'] = array(
+    'bootstrap' => DRUSH_BOOTSTRAP_DRUSH,
+    'description' => 'Displays the current version of DevTools.',
+  );
   $commands['devtools-flush'] = array(
     'description' => 'Flushes all system data and rebuilds.',
     'aliases' => array('flush'),
   );
   $commands['devtools-patch'] = array(
+    'bootstrap' => DRUSH_BOOTSTRAP_DRUSH,
     'description' => 'Applies a single patch file.',
     'arguments' => array(
       'patchfile' => 'The patch file to patch the project with.',
@@ -33,16 +47,13 @@ function devtools_drush_command() {
     'aliases' => array('patch'),
   );
   $commands['devtools-patch-revert'] = array(
+    'bootstrap' => DRUSH_BOOTSTRAP_DRUSH,
     'description' => 'Reverts a one or more patch files for a specified Drupal project.',
     'arguments' => array(
       'project' => 'The name of the project to revert patch files on.',
       'patchfile' => 'The patch file to revert on a single project.',
     ),
     'aliases' => array('patch-revert', 'rpatch'),
-  );
-  $commands['devtools-version'] = array(
-    'bootstrap' => DRUSH_BOOTSTRAP_DRUSH,
-    'description' => 'Displays the current version of DevTools.',
   );
   return $commands;
 }
