@@ -102,17 +102,27 @@ function drush_devtools_flush() {
 }
 
 /**
- * @param $url
+ * Downloads a single file from a remote URL to a specified directory.
+ *
+ * @param string $url
+ *   The URL of the file to download.
  * @param string $directory
+ *   The directory in which the file should be downloaded too.
  */
 function drush_devtools_download_file($url, $directory = '.') {
+  // Ensure that the specified `$url` is valid prior to continuing.
   if (devtools_is_valid_url($url)) {
+    // If the URL is valid, proceed with download and store the file
+    // within the temporary directory prior to moving.
     $file = devtools_download_file($url);
   }
   else {
     return drush_error(dt('Specified file URL is not valid.'), 'error');
   }
 
+  // Check and validate the specified `$directory`, ensure it is a directory
+  // and is writable prior to attempting to move. Should any errors be encountered,
+  // return with a drush_log() warning the user of the error.
   $destination = '';
   if (!empty($directory) && '.' !== $directory) {
     if (file_exists($directory)) {
@@ -121,7 +131,7 @@ function drush_devtools_download_file($url, $directory = '.') {
           $destination = realpath($directory);
         }
         else {
-          return devtools_error('DEVTOOLS_DOWNLOAD_FILE_DESTINATION_NOT_WRITABLE', dt('Destination directory, "@directory", exists but is not writable.', array('@directory' => $directory)));
+          return drush_log(dt('Destination directory, "@directory", exists but is not writable.', array('@directory' => $directory)), 'error');
         }
       }
       else {
@@ -129,16 +139,26 @@ function drush_devtools_download_file($url, $directory = '.') {
       }
     }
     else {
-      // TODO: Ask the user if we should create this directory.
-      return drush_log(dt('Destination directory, "@directory", does not exist.', array('@directory' => $directory)), 'error');
+      if (!drush_confirm(dt('The specified directory, "@directory", does not exist. Do you want to create it?', array('@directory' => $directory)))) {
+        return;
+      }
+      if (!drush_mkdir($directory)) {
+        return drush_log(dt('Destination directory, "@directory", could not be created.', array('@directory' => $directory)));
+      }
+      $destination = realpath($directory);
     }
   }
   else {
+    // Should no directory be specified or if '.' is given, use the
+    // current working directory for the download location.
     $destination = drush_cwd();
   }
 
   $filename = basename($file);
   $destination = $destination . '/' . $filename;
+
+  // Attempt to copy the downloaded file from the temporary file location
+  // to the destination directory, log an error should one occur.
   if (!drush_copy_dir($file, $destination)) {
     return drush_log(dt('The file failed to download and write to @directory as the file already exists.', array('@directory' => $destination)), 'error');
   }
