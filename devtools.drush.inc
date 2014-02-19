@@ -33,6 +33,16 @@ function devtools_drush_command() {
     'description' => 'Flushes all system data and rebuilds.',
     'aliases' => array('flush'),
   );
+  $commands['devtools-download-file'] = array(
+    'bootstrap' => DRUSH_BOOTSTRAP_DRUSH,
+    'description' => 'Download a single file from a specified URL to a directory.',
+    'arguments' => array(
+      'file' => 'The URL of the file to download.',
+      'directory' => 'The destination directory in which to download the file too.',
+    ),
+    'required arguments' => 1,
+    'aliases' => array('dl-file', 'dlf'),
+  );
   $commands['devtools-patch'] = array(
     'bootstrap' => DRUSH_BOOTSTRAP_DRUSH,
     'description' => 'Applies a single patch file.',
@@ -74,7 +84,7 @@ function devtools_drush_help($section) {
  * Displays the current version of DevTools.
  */
 function drush_devtools_version() {
-  drush_print(dt('Current version of DevTools: @version.', array(
+  drush_print(dt('drush devtools version @version.', array(
     '@version' => DEVTOOLS_VERSION,
   )));
 }
@@ -89,6 +99,51 @@ function drush_devtools_flush() {
   system_rebuild_theme_data();
   drupal_flush_all_caches();
   drush_print(dt('The system project (modules, themes) data have been rebuilt and all caches flushed.'));
+}
+
+/**
+ * @param $url
+ * @param string $directory
+ */
+function drush_devtools_download_file($url, $directory = '.') {
+  if (devtools_is_valid_url($url)) {
+    $file = devtools_download_file($url);
+  }
+  else {
+    return drush_error(dt('Specified file URL is not valid.'), 'error');
+  }
+
+  $destination = '';
+  if (!empty($directory) && '.' !== $directory) {
+    if (file_exists($directory)) {
+      if (is_dir($directory)) {
+        if (is_writable($directory)) {
+          $destination = realpath($directory);
+        }
+        else {
+          return devtools_error('DEVTOOLS_DOWNLOAD_FILE_DESTINATION_NOT_WRITABLE', dt('Destination directory, "@directory", exists but is not writable.', array('@directory' => $directory)));
+        }
+      }
+      else {
+        return drush_log(dt('Destination directory, "@directory", exists but does not appear to be a directory.', array('@directory' => $directory)), 'error');
+      }
+    }
+    else {
+      // TODO: Ask the user if we should create this directory.
+      return drush_log(dt('Destination directory, "@directory", does not exist.', array('@directory' => $directory)), 'error');
+    }
+  }
+  else {
+    $destination = drush_cwd();
+  }
+
+  $filename = basename($file);
+  $destination = $destination . '/' . $filename;
+  if (!drush_copy_dir($file, $destination)) {
+    return drush_log(dt('The file failed to download and write to @directory as the file already exists.', array('@directory' => $destination)), 'error');
+  }
+
+  drush_log(dt('Successfully downloaded file @filename.', array('@filename' => $filename)), 'ok');
 }
 
 /**
