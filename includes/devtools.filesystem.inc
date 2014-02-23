@@ -39,6 +39,19 @@ function devtools_find_project_dirs_by_filescan($name) {
   return isset($projects[$name]) ? $projects[$name] : NULL;
 }
 
+/**
+ * Performs a directory trim to remove trailing (and leading) slash.
+ *
+ * @param string $path
+ *   The directory path to perform trim.
+ * @param bool $ltrim
+ *   A boolean indicating whether a left trim should occur.
+ * @param string $os
+ *   The current operating system.
+ *
+ * @return string
+ *   Returns the trimmed directory path.
+ */
 function devtools_trim_path($path, $ltrim = FALSE, $os = NULL) {
   if (drush_is_windows($os)) {
     return $ltrim ? ltrim(rtrim($path, '/\\'), '/\\') : rtrim($path, '/\\');
