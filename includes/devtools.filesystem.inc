@@ -38,3 +38,10 @@ function devtools_find_project_dirs_by_filescan($name) {
   }
   return isset($projects[$name]) ? $projects[$name] : NULL;
 }
+
+function devtools_trim_path($path, $ltrim = FALSE, $os = NULL) {
+  if (drush_is_windows($os)) {
+    return $ltrim ? ltrim(rtrim($path, '/\\'), '/\\') : rtrim($path, '/\\');
+  }
+  return $ltrim ? ltrim(rtrim($path, '/'), '/') : rtrim($path, '/');
+}

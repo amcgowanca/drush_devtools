@@ -65,6 +65,20 @@ function devtools_drush_command() {
     ),
     'aliases' => array('patch-revert', 'rpatch'),
   );
+  $commands['devtools-find-makes'] = array(
+    'bootstrap' => DRUSH_BOOTSTRAP_DRUSH,
+    'description' => 'Recursively search a file structure for Drush make files.',
+    'arguments' => array(
+      'directory' => 'The directory path to search within.',
+    ),
+    'options' => array(
+      'projects' => 'A comma-separated list of projects to restrict the output of directories that include a make file that has one or more of the specified projects.',
+      'libraries' => 'A comma-separated list of libraries to restrict the output of directories that include a make file that has one or more of the specified libraries.',
+      'exclude-projects' => 'Exclude the project listings from being displayed.',
+      'exclude-libraries' => 'Exclude the library listings from being displayed.',
+    ),
+    'aliases' => array('fmks'),
+  );
   return $commands;
 }
 
@@ -313,4 +327,93 @@ function drush_devtools_patch_revert($project = NULL, $patchfile = NULL) {
       }
     }
   }
+}
+
+/**
+ * Results table of directories that contain a make with listed projects and libraries.
+ *
+ * @param string $directory
+ *   The directory in which a file scan should occur.
+ */
+function drush_devtools_find_makes($directory = '.') {
+  // If the search directory is not specified, use the current working directory.
+  // Otherwise we will attempt to retrieve the absolute path and ensure it
+  // is actually a directory prior to continuing.
+  if (!empty($directory) && '.' !== $directory) {
+    $directory = realpath($directory);
+    if (!is_dir($directory)) {
+      return drush_log(dt('The specified directory does not exist or is not a directory.'), 'error');
+    }
+  }
+  else {
+    $directory = drush_cwd();
+  }
+
+  // Retrieve the `--projects` and `--libraries` as an array, results
+  // are filtered by items listed within such options.
+  $projects = drush_get_option_list('projects', array());
+  $libraries = drush_get_option_list('libraries', array());
+
+  $results = array();
+  // Recursively scan the $directory for all `drupal-org.make` files that will
+  // be parsed for project information and libraries.
+  $listings = drush_scan_directory($directory, "/drupal-org\.make$/");
+  foreach ($listings as $listing) {
+    // Parse and retrieve the information within the .make file.
+    $makeinfo = make_parse_info_file($listing->filename);
+    // Normalize the scanned directory for a friendly output, relevant from
+    // that of the specified $directory option.
+    $scanned_dir = devtools_trim_path(str_replace($directory, '', dirname($listing->filename)), TRUE);
+    // Use `$data` as a temporary storage prior to appending to `$results`.
+    $data = array(
+      'directory' => empty($scanned_dir) ? './' : $scanned_dir,
+    );
+    // Determine whether or not filtered appending should occur.
+    $include = empty($projects) && empty($libraries) ? TRUE : FALSE;
+
+    // Only parse and build results output for projects if the `exclude-projects` option
+    // does not exist in the executed command.
+    if (!drush_get_option('exclude-projects')) {
+      if (!empty($makeinfo['projects'])) {
+        foreach ($makeinfo['projects'] as $project_name => $project_info) {
+          if (!empty($projects) && in_array($project_name, $projects)) {
+            $include = TRUE;
+          }
+          $version = isset($project_info['version']) ? $project_info['version'] : dt('Unknown');
+          $data['projects'][] = dt('@project (@version)', array('@project' => $project_name, '@version' => $version));
+        }
+      }
+      $data['projects'] = !empty($data['projects']) ? implode(', ', $data['projects']) : dt('No projects');
+    }
+
+    // Only parse and build results output for libraries if the `exclude-libraries` option
+    // does not exist in the executed command.
+    if (!drush_get_option('exclude-libraries')) {
+      if (!empty($makeinfo['libraries'])) {
+        foreach ($makeinfo['libraries'] as $library_name => $library_info) {
+          if (!empty($libraries) && in_array($library_name, $libraries)) {
+            $include = TRUE;
+          }
+          $data['libraries'][] = dt('@library', array('@library' => $library_name));
+        }
+      }
+      $data['libraries'] = !empty($data['libraries']) ? implode(', ', $data['libraries']) : dt('No libraries');
+    }
+
+    if ($include) {
+      $results[] = $data;
+    }
+  }
+
+  // Create table header and attach as first row.
+  $tableheader = array('directory' => dt('Scanned Directory'));
+  if (!drush_get_option('exclude-projects')) {
+    $tableheader['projects'] = dt('Projects');
+  }
+  if (!drush_get_option('exclude-libraries')) {
+    $tableheader['libraries'] = dt('Libraries');
+  }
+  array_unshift($results, $tableheader);
+  // Display the results for final output.
+  drush_print_table($results, TRUE);
 }
