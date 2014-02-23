@@ -77,7 +77,7 @@ function devtools_drush_command() {
       'exclude-projects' => 'Exclude the project listings from being displayed.',
       'exclude-libraries' => 'Exclude the library listings from being displayed.',
     ),
-    'aliases' => array('fmks'),
+    'aliases' => array('find-makes', 'fmks'),
   );
   return $commands;
 }
