@@ -12,6 +12,7 @@
 
 include_once 'includes/devtools.common.inc';
 include_once 'includes/devtools.filesystem.inc';
+include_once 'includes/devtools.git.inc';
 include_once 'includes/devtools.patch.inc';
 include_once 'includes/devtools.utilities.inc';
 
@@ -78,6 +79,26 @@ function devtools_drush_command() {
       'exclude-libraries' => 'Exclude the library listings from being displayed.',
     ),
     'aliases' => array('find-makes', 'fmks'),
+  );
+  $commands['devtools-find-infos'] = array(
+    'bootstrap' => DRUSH_BOOTSTRAP_DRUSH,
+    'description' => 'Recursively search a file structure for .info files.',
+    'arguments' => array(
+      'directory' => 'The directory path to search within.',
+    ),
+    'options' => array(
+      'dependencies' => 'A comma-separated list of dependencies to restrict the output of directories that include a .info file that has one or more of the specified projects.',
+      'dependency-name-contains' => 'My description..',
+    ),
+    'aliases' => array('find-infos', 'find-dependency', 'find-dep'),
+  );
+  $commands['devtools-git-clean'] = array(
+    'bootstrap' => DRUSH_BOOTSTRAP_DRUSH,
+    'description' => 'Recursively cleans any Git directories or files from within a `git clone`.',
+    'arguments' => array(
+      'directory' => 'The directory in which to recursively remove Git files or directories.',
+    ),
+    'aliases' => array('git-clean'),
   );
   return $commands;
 }
@@ -342,7 +363,7 @@ function drush_devtools_find_makes($directory = '.') {
   if (!empty($directory) && '.' !== $directory) {
     $directory = realpath($directory);
     if (!is_dir($directory)) {
-      return drush_log(dt('The specified directory does not exist or is not a directory.'), 'error');
+      return drush_log(dt('The specified directory is not a directory and or does not exist.'), 'error');
     }
   }
   else {
@@ -416,4 +437,86 @@ function drush_devtools_find_makes($directory = '.') {
   array_unshift($results, $tableheader);
   // Display the results for final output.
   drush_print_table($results, TRUE);
+}
+
+/**
+ * @param string $directory
+ */
+function drush_devtools_find_infos($directory = '.') {
+  if (!empty($directory) && '.' !== $directory) {
+    $directory = realpath($directory);
+    if (!is_dir($directory)) {
+      return drush_log(dt('The specified directory is not a directory and or does not exist.'), 'error');
+    }
+  }
+  else {
+    $directory = drush_cwd();
+  }
+
+  $dependencies = drush_get_option_list('dependencies', array());
+  $dependency_name_contains = drush_get_option('dependency-name-contains', '');
+
+  $results = array();
+  $listings = drush_scan_directory($directory, "/\.info$/", $nomask = array('.', '..', 'CVS'), $callback = 0, $recurse_max_depth = TRUE, $key = 'basename');
+  foreach ($listings as $listing) {
+    $info = drush_drupal_parse_info_file($listing->filename);
+    $scanned_info = basename($listing->filename);
+    $data = array(
+      'infofile' => empty($scanned_info) ? '.' : $scanned_info,
+    );
+
+    if (!empty($info['dependencies'])) {
+      $include = FALSE;
+      if (!empty($dependencies)) {
+        foreach ($dependencies as $dependency) {
+          if (in_array($dependency, $info['dependencies'])) {
+            $include = TRUE;
+            break 1;
+          }
+        }
+      }
+      elseif (!empty($dependency_name_contains)) {
+        $include = FALSE;
+        foreach ($info['dependencies'] as $dependency_name) {
+          if (FALSE !== strpos($dependency_name, $dependency_name_contains)) {
+            $include = TRUE;
+            break 1;
+          }
+        }
+      }
+
+      if ($include) {
+        $data['dependencies'] = implode(', ', $info['dependencies']);
+        $results['infofile'] = $data;
+      }
+    }
+  }
+
+  $tableheader = array('infofile' => dt('Scanned .info file'), 'dependencies' => dt('Dependencies'));
+  array_unshift($results, $tableheader);
+  drush_print_table($results, TRUE);
+}
+
+/**
+ * @param string $directory
+ * @return mixed
+ */
+function drush_devtools_git_clean($directory = '.') {
+  // If the search directory is not specified, use the current working directory.
+  // Otherwise we will attempt to retrieve the absolute path and ensure it
+  // is actually a directory prior to continuing.
+  if (!empty($directory) && '.' !== $directory) {
+    $directory = realpath($directory);
+    if (!is_dir($directory)) {
+      return drush_log(dt('The specified directory is not a directory and or does not exist.'), 'error');
+    }
+  }
+  else {
+    $directory = drush_cwd();
+  }
+
+  if (!devtools_git_clean($directory)) {
+    return drush_log(dt('An error occurred while performing cleanup on Git files and directories.'), 'error');
+  }
+  drush_log(dt('Successfully performed Git clean removing all Git files and directories.'), 'ok');
 }
