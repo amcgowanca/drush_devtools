@@ -19,7 +19,7 @@ include_once 'includes/devtools.utilities.inc';
 /**
  * Denotes the current major.minor version.
  */
-define('DEVTOOLS_VERSION', '0.2');
+define('DEVTOOLS_VERSION', '0.4');
 
 /**
  * Implements hook_drush_command().
