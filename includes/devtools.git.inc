@@ -11,8 +11,13 @@
  */
 
 /**
- * @param $directory
+ * Recursively removes Git directories and files within the specified directory.
+ *
+ * @param string $directory
+ *   The directory to recursively clean.
+ *
  * @return bool
+ *   Returns TRUE if cleaning was successful, otherwise FALSE.
  */
 function devtools_git_clean($directory) {
   if (is_dir($directory) && $handle = opendir($directory)) {
@@ -28,7 +33,12 @@ function devtools_git_clean($directory) {
           }
         }
         else {
-          if (!drush_delete_dir($directory . '/' . $file, TRUE)) {
+          if (drush_delete_dir($directory . '/' . $file, TRUE)) {
+            if (drush_get_option('verbose', FALSE)) {
+              drush_log(dt('Deleted directory: @file', array('@file' => $directory . '/' . $file)), 'ok');
+            }
+          }
+          else {
             drush_log(dt('Cannot perform cleanup on potential Git directory: @file.', array('@file' => $directory . '/' . $file)), 'warning');
           }
         }
@@ -36,6 +46,9 @@ function devtools_git_clean($directory) {
       elseif (devtools_file_is_git_file($file)) {
         @chmod($directory . '/' . $file, 0777);
         unlink($directory . '/' . $file);
+        if (drush_get_option('verbose', FALSE)) {
+          drush_log(dt('Deleted file: @file', array('@file' => $directory . '/' . $file)), 'ok');
+        }
       }
     }
     return TRUE;
@@ -44,16 +57,26 @@ function devtools_git_clean($directory) {
 }
 
 /**
- * @param $directory
+ * Tests if the specified directory is a Git directory.
+ *
+ * @param string $directory
+ *   The directory to test if it is a Git directory.
+ *
  * @return bool
+ *   Returns TRUE if $directory is a Git directory, otherwise FALSE.
  */
 function devtools_directory_is_git_directory($directory) {
   return in_array($directory, array('.git'));
 }
 
 /**
- * @param $file
+ * Tests if the specified file is a Git specific file (e.g. `.gitignore`).
+ *
+ * @param string $file
+ *   The file to test if it is a Git file.
+ *
  * @return bool
+ *   Returns TRUE if the $file is a Git file, otherwise FALSE.
  */
 function devtools_file_is_git_file($file) {
   return in_array($file, array('.gitignore', '.gitmodules'));

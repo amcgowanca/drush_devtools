@@ -440,9 +440,15 @@ function drush_devtools_find_makes($directory = '.') {
 }
 
 /**
+ * Results table of directories that contain a .info with listed dependencies.
+ *
  * @param string $directory
+ *   The directory search within.
  */
 function drush_devtools_find_infos($directory = '.') {
+  // If the search directory is not specified, use the current working directory.
+  // Otherwise we will attempt to retrieve the absolute path and ensure it
+  // is actually a directory prior to continuing.
   if (!empty($directory) && '.' !== $directory) {
     $directory = realpath($directory);
     if (!is_dir($directory)) {
@@ -453,18 +459,27 @@ function drush_devtools_find_infos($directory = '.') {
     $directory = drush_cwd();
   }
 
+  // Retrieve the `--dependencies` as an array, allowing for results to
+  // be filtered by items listed where they contain such dependencies.
   $dependencies = drush_get_option_list('dependencies', array());
+  // Retrieve the `--dependency-name-contains` allowing for dependencies to be searched
+  // where its name contains the specified value here.
   $dependency_name_contains = drush_get_option('dependency-name-contains', '');
 
   $results = array();
+  // Recursively scan the $directory for all `.info` files that will be parsed.
   $listings = drush_scan_directory($directory, "/\.info$/", $nomask = array('.', '..', 'CVS'), $callback = 0, $recurse_max_depth = TRUE, $key = 'basename');
   foreach ($listings as $listing) {
+    // Parse and retrieve the information within the .info file.
     $info = drush_drupal_parse_info_file($listing->filename);
+    // Normalize the scanned directory for a friendly output, relevant from
+    // that of the specified $directory option.
     $scanned_info = basename($listing->filename);
+    // Use `$data` as a temporary storage prior to appending to `$results`.
     $data = array(
       'infofile' => empty($scanned_info) ? '.' : $scanned_info,
     );
-
+    // If the .info contains `dependencies`, allow for filtering to occur.
     if (!empty($info['dependencies'])) {
       $include = FALSE;
       if (!empty($dependencies)) {
@@ -498,8 +513,10 @@ function drush_devtools_find_infos($directory = '.') {
 }
 
 /**
+ * Recursively cleans a directory structure of all Git related files.
+ *
  * @param string $directory
- * @return mixed
+ *   The directory to clean.
  */
 function drush_devtools_git_clean($directory = '.') {
   // If the search directory is not specified, use the current working directory.
@@ -514,7 +531,7 @@ function drush_devtools_git_clean($directory = '.') {
   else {
     $directory = drush_cwd();
   }
-
+  // Perform a recursive clean on the `$directory`.
   if (!devtools_git_clean($directory)) {
     return drush_log(dt('An error occurred while performing cleanup on Git files and directories.'), 'error');
   }
