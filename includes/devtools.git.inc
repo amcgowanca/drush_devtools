@@ -79,5 +79,5 @@ function devtools_directory_is_git_directory($directory) {
  *   Returns TRUE if the $file is a Git file, otherwise FALSE.
  */
 function devtools_file_is_git_file($file) {
-  return in_array($file, array('.gitignore', '.gitmodules'));
+  return in_array($file, array('.git', '.gitignore', '.gitmodules'));
 }
